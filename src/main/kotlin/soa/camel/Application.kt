@@ -38,6 +38,20 @@ class SearchController(private val producerTemplate: ProducerTemplate) {
         producerTemplate.requestBodyAndHeader(DIRECT_ROUTE, "mandalorian", "keywords", q)
 }
 
+class MyFilter {
+    val blackList = arrayOf("")
+    fun notContainKeywords(tweets: Array, filters: Array): Boolean {
+        for (tweet in tweets) {
+            for (keyword in filters) {
+                if (tweet["text"].contain(keyword)) {
+                    return false
+                }
+            }
+            return true
+        }
+    }
+}
+
 @Component
 class Router(meterRegistry: MeterRegistry) : RouteBuilder() {
 
@@ -47,15 +61,24 @@ class Router(meterRegistry: MeterRegistry) : RouteBuilder() {
         from(DIRECT_ROUTE)
             .process { exchange ->
                 val originalKeywords = exchange.getIn().getHeader("keywords") as? String ?: ""
-                val (maxList, keywordList) = originalKeywords.split(" ").partition { it.startsWith("max:") }
+
+                // filters = [keyw1, keyw2, ...]
+                val (filters, rest) = originalKeywords.split(" ").partition { it.contains("-") }
+                val filterList = filters.map { it.drop(1) }
+                println(filterList)
+
+                // Number of results
+                val (maxList, keywordList) = rest.partition { it.startsWith("max:") }
                 val max = maxList.firstOrNull()
                     ?.drop(CUATRO)
                     ?.toIntOrNull()
                     ?: CINCO
+                println(keywordList)
                 exchange.getIn().setHeader("keywords", keywordList.joinToString(" "))
                 exchange.getIn().setHeader("count", max)
             }
             .toD("twitter-search:\${header.keywords}?count=\${header.count}")
+            .filter()
             .wireTap(LOG_ROUTE)
             .wireTap(COUNT_ROUTE)
 
