@@ -41,15 +41,18 @@ class Router(meterRegistry: MeterRegistry) : RouteBuilder() {
 
     private val perKeywordMessages = TaggedCounter("per-keyword-messages", "keyword", meterRegistry)
 
+    const val cuatro = 4
+    const val cinco = 5
+
     override fun configure() {
         from(DIRECT_ROUTE)
             .process { exchange ->
                 val originalKeywords = exchange.getIn().getHeader("keywords") as? String ?: ""
                 val (maxList, keywordList) = originalKeywords.split(" ").partition { it.startsWith("max:") }
                 val max = maxList.firstOrNull()
-                 ?.drop(4)
-                 ?.toIntOrNull()
-                 ?: 5
+                    ?.drop(cuatro)
+                    ?.toIntOrNull()
+                    ?: cinco
                 exchange.getIn().setHeader("keywords", keywordList.joinToString(" "))
                 exchange.getIn().setHeader("count", max)
             }
