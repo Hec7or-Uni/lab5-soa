@@ -64,8 +64,7 @@ class Router(meterRegistry: MeterRegistry) : RouteBuilder() {
 
                 // filters = [keyw1, keyw2, ...]
                 val (filters, rest) = originalKeywords.split(" ").partition { it.contains("-") }
-                val filterList = filters.map { it.drop(1) }
-                println(filterList)
+                // val filterList = filters.map { it.drop(1) }
 
                 // Number of results
                 val (maxList, keywordList) = rest.partition { it.startsWith("max:") }
@@ -73,7 +72,6 @@ class Router(meterRegistry: MeterRegistry) : RouteBuilder() {
                     ?.drop(CUATRO)
                     ?.toIntOrNull()
                     ?: CINCO
-                println(keywordList)
                 exchange.getIn().setHeader("keywords", keywordList.joinToString(" "))
                 exchange.getIn().setHeader("count", max)
             }
