@@ -24,8 +24,9 @@ const val DIRECT_ROUTE = "direct:twitter"
 const val COUNT_ROUTE = "direct:extractor"
 const val LOG_ROUTE = "direct:log"
 const val INDEX_VIEW = "index"
-const val CUATRO = 4
-const val CINCO = 5
+
+const val PREFIX_LENGTH = 4
+const val DEFAULT_MSG_LIMIT = 5
 
 @Controller
 class SearchController(private val producerTemplate: ProducerTemplate) {
@@ -38,20 +39,6 @@ class SearchController(private val producerTemplate: ProducerTemplate) {
         producerTemplate.requestBodyAndHeader(DIRECT_ROUTE, "mandalorian", "keywords", q)
 }
 
-class MyFilter {
-    val blackList = arrayOf("")
-    fun notContainKeywords(tweets: Array, filters: Array): Boolean {
-        for (tweet in tweets) {
-            for (keyword in filters) {
-                if (tweet["text"].contain(keyword)) {
-                    return false
-                }
-            }
-            return true
-        }
-    }
-}
-
 @Component
 class Router(meterRegistry: MeterRegistry) : RouteBuilder() {
 
@@ -61,22 +48,14 @@ class Router(meterRegistry: MeterRegistry) : RouteBuilder() {
         from(DIRECT_ROUTE)
             .process { exchange ->
                 val originalKeywords = exchange.getIn().getHeader("keywords") as? String ?: ""
+                val (maxList, keywordsList) = originalKeywords.split(" ")
+                    .partition { it.startsWith("max:") }
+                exchange.getIn().setHeader("keywords", keywordsList.joinToString(" "))
 
-                // filters = [keyw1, keyw2, ...]
-                val (filters, rest) = originalKeywords.split(" ").partition { it.contains("-") }
-                // val filterList = filters.map { it.drop(1) }
-
-                // Number of results
-                val (maxList, keywordList) = rest.partition { it.startsWith("max:") }
-                val max = maxList.firstOrNull()
-                    ?.drop(CUATRO)
-                    ?.toIntOrNull()
-                    ?: CINCO
-                exchange.getIn().setHeader("keywords", keywordList.joinToString(" "))
+                val max = maxList.firstOrNull()?.drop(PREFIX_LENGTH)?.toIntOrNull() ?: DEFAULT_MSG_LIMIT
                 exchange.getIn().setHeader("count", max)
             }
             .toD("twitter-search:\${header.keywords}?count=\${header.count}")
-            .filter()
             .wireTap(LOG_ROUTE)
             .wireTap(COUNT_ROUTE)
 
